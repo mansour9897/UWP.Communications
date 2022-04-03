@@ -1,12 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace Communications
 {
@@ -18,6 +15,8 @@ namespace Communications
         private static Socket _client;
         public bool IsConnected => _client is null ? false : _client.Connected;
 
+        public Action<object, string> MessageReceived { get; set;}
+
         // ManualResetEvent instances signal completion.  
         private static ManualResetEvent connectDone =
             new ManualResetEvent(false);
@@ -25,9 +24,6 @@ namespace Communications
             new ManualResetEvent(false);
         private static ManualResetEvent receiveDone =
             new ManualResetEvent(false);
-
-        delegate void MessageReceivedHandler(object sender, string message);
-        event MessageReceivedHandler MessageReceived;
 
         private string recivedMsg = "";
         #endregion

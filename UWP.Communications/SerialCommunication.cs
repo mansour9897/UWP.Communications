@@ -9,8 +9,8 @@ namespace Communications
     {
         private readonly SerialPort _port;
 
-        delegate void MessageReceivedHandler(object sender, string message);
-        event MessageReceivedHandler MessageReceived;
+        //delegate void MessageReceivedHandler(object sender, string message);
+        //event MessageReceivedHandler MessageReceived;
         public SerialComminucation()
         {
             var ports = SerialPort.GetPortNames();
@@ -53,6 +53,8 @@ namespace Communications
             }
         }
         public bool IsConnected => _port.IsOpen;
+
+        public Action<object, string> MessageReceived { get; set;}
 
         public bool Connect()
         {
