@@ -1,43 +1,40 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Net;
-using System.Net.Sockets;
 using System.Text;
-using System.Threading;
+using System.Threading.Tasks;
+using Windows.Networking;
+using Windows.Networking.Sockets;
+using Windows.Storage.Streams;
 
 namespace Communications
 {
     public class NetSocket : ICommunication
     {
-        #region varables
-        private readonly int _portNumber;
-        private readonly string _hostIp;
-        private static Socket _client;
-        public bool IsConnected => _client is null ? false : _client.Connected;
+        
 
+        private readonly string _portNumber;
+        private readonly HostName _hostIp;
+        private static StreamSocket _client;
+
+        DataWriter writer;
+        DataReader reader;
+
+        private bool connected;
+        public bool IsConnected => connected;
         public Action<object, string> MessageReceived { get; set;}
-
-        // ManualResetEvent instances signal completion.  
-        private static ManualResetEvent connectDone =
-            new ManualResetEvent(false);
-        private static ManualResetEvent sendDone =
-            new ManualResetEvent(false);
-        private static ManualResetEvent receiveDone =
-            new ManualResetEvent(false);
-
-        private string recivedMsg = "";
-        #endregion
 
         public NetSocket()
         {
-            _portNumber = 8080;
-            _hostIp = "192.168.1.240";
+            _portNumber = "8080";
+            _hostIp = new HostName("192.168.1.240");
+            _client = new StreamSocket();
         }
 
         public NetSocket(string hostIp, int portNumber)
         {
-            _portNumber = portNumber;
-            _hostIp = hostIp;
+            _portNumber = portNumber.ToString();
+            _hostIp = new HostName(hostIp);
+            _client = new StreamSocket();
         }
 
         public void ChangeSetting(ICommunicationSetting setting)
@@ -47,153 +44,73 @@ namespace Communications
 
         public bool Connect()
         {
-            // Connect to a remote device.  
+            if (IsConnected) return IsConnected;
+
             try
             {
-                IPAddress ipAddress = IPAddress.Parse(_hostIp);
-                IPEndPoint remoteEP = new IPEndPoint(ipAddress, _portNumber);
-
-                // Create a TCP/IP socket.  
-                _client = new Socket(ipAddress.AddressFamily,
-                    SocketType.Stream, ProtocolType.Tcp);
-
-                // Connect to the remote endpoint.  
-                _client.BeginConnect(remoteEP,
-                    new AsyncCallback(ConnectCallback), _client);
-                connectDone.WaitOne(2500);
-
-                // Create the state object.  
-                StateObject state = new StateObject();
-                state.workSocket = _client;
-
-                // Begin receiving the data from the remote device.  
-                _client.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0,
-                    new AsyncCallback(ReceiveCallback), state);
-
-                return true;
+                _client.ConnectAsync(_hostIp, _portNumber).AsTask().Wait();
+                writer = new DataWriter(_client.OutputStream);
+                reader = new DataReader(_client.InputStream);
+                connected = true;
+                Debug.WriteLine($"Connecting to {_hostIp.DisplayName}:{_portNumber} successfully!");
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                Debug.WriteLine(e.ToString());
-                return false;
+
+                Debug.WriteLine("Connection Failed!");
+                Debug.WriteLine(ex.Message);
             }
+
+            return IsConnected;
         }
 
         public string Read()
         {
-            return recivedMsg;
+            StringBuilder strBuilder;
+            string tr = "";
+            try
+            {
+                strBuilder = new StringBuilder();
+
+                reader.InputStreamOptions = InputStreamOptions.Partial;
+
+                var stringHeader = reader.LoadAsync(255);
+                //tr = reader.ReadString(1);
+                while (reader.UnconsumedBufferLength > 0)
+                {
+                    tr += reader.ReadString(1);
+                    if (tr.Contains("\n")) break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("Read Socket Stream Error!!!!");
+                Debug.WriteLine(ex.Message);
+            }
+            return tr;
         }
 
         public void Write(string data)
         {
-            // Convert the string data to byte data using ASCII encoding.  
-            byte[] byteData = Encoding.ASCII.GetBytes(data);
-
+            if (IsConnected == false) Connect();
             try
             {
-                if (_client is null) return;
-                // Begin sending the data to the remote device.  
-                _ = _client.BeginSend(byteData, 0, byteData.Length, 0,
-                    new AsyncCallback(SendCallback), _client);
-                sendDone.WaitOne(2000);
-            }
-            catch
-            {
-                Debug.WriteLine("Send data failed.");
-            }
-        }
-
-        #region private methods
-        private void ConnectCallback(IAsyncResult ar)
-        {
-            try
-            {
-                // Retrieve the socket from the state object.  
-                Socket client = (Socket)ar.AsyncState;
-
-                if (client is null) return;
-                // Complete the connection.  
-                client.EndConnect(ar);
-
-                if (client.RemoteEndPoint != null)
-                    Debug.WriteLine("Socket connected to {0}", client.RemoteEndPoint.ToString());
-
-                // Signal that the connection has been made.  
-                connectDone.Set();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.ToString());
-            }
-        }
-
-        private void ReceiveCallback(IAsyncResult ar)
-        {
-            try
-            {
-                // Retrieve the state object and the client socket
-                // from the asynchronous state object.  
-                StateObject state = (StateObject)ar.AsyncState;
-
-                if (state is null) return;
-
-                Socket client = state.workSocket;
-
-                if (client is null) return;
-                // Read data from the remote device.  
-                int bytesRead = client.EndReceive(ar);
-
-                if (bytesRead > 0)
+                if (reader.UnconsumedBufferLength > 0)
                 {
-                    // There might be more data, so store the data received so far.  
-                    state.sb.Append(Encoding.ASCII.GetString(state.buffer, 0, bytesRead));
-
-                    string content = state.sb.ToString();
-                    if ((content.IndexOf("\r") > -1) || (content.IndexOf("\n") > -1) || (content.IndexOf("\r\n") > -1))
-                    {
-                        // Signal that all bytes have been received.  
-                        state.sb.Clear();
-                        receiveDone.Set();
-                        RaiseMessageReceived(content);
-                    }
-
-                    // Get the rest of the data.  
-                    client.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0,
-                      new AsyncCallback(ReceiveCallback), state);
+                    string str = reader.ReadString(reader.UnconsumedBufferLength);
+                }
+                string sendData = data;
+                writer.WriteString(sendData);
+                writer.StoreAsync().AsTask().Wait();
+            }
+            catch (Exception exception)
+            {
+                if (SocketError.GetStatus(exception.HResult) == SocketErrorStatus.Unknown)
+                {
                 }
             }
-            catch (Exception e)
-            {
-                Debug.WriteLine(e.ToString());
-            }
+
+            Task.Delay(5).Wait();
         }
-
-        protected virtual void RaiseMessageReceived(string message)
-        {
-            recivedMsg = message;
-            MessageReceived?.Invoke(this, message);
-        }
-
-        private void SendCallback(IAsyncResult ar)
-        {
-            try
-            {
-                // Retrieve the socket from the state object.  
-                Socket client = (Socket)ar.AsyncState;
-
-                if (client is null) return;
-
-                // Complete sending the data to the remote device.  
-                int bytesSent = client.EndSend(ar);
-
-                // Signal that all bytes have been sent.  
-                sendDone.Set();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.ToString());
-            }
-        }
-        #endregion
     }
 }

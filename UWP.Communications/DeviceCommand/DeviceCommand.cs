@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Communications.DeviceCommand
 {
@@ -54,7 +55,7 @@ namespace Communications.DeviceCommand
             while (!ExecuteConfirmed)
             {
                 _com.Write(_commandCode);
-                Thread.Sleep(10);
+                Task.Delay(10).Wait();
 
                 if (stopwatch.Elapsed.TotalMilliseconds > 3000)
                     break;
