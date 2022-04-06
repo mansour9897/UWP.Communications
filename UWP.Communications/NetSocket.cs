@@ -28,6 +28,7 @@ namespace Communications
             _portNumber = "8080";
             _hostIp = new HostName("192.168.1.240");
             _client = new StreamSocket();
+            Task.Run(() => BackWork());
         }
 
         public NetSocket(string hostIp, int portNumber)
@@ -35,8 +36,28 @@ namespace Communications
             _portNumber = portNumber.ToString();
             _hostIp = new HostName(hostIp);
             _client = new StreamSocket();
+            Task.Run(() => BackWork());
         }
 
+        public async Task BackWork()
+        {
+            while(true)
+            {
+                try
+                {
+                    string msg = Read();
+                    if (msg != null)
+                    {
+                        MessageReceived?.Invoke(this, msg);
+                    }
+                    await Task.Delay(1);
+                }
+                catch (Exception e)
+                {
+                    Debug.WriteLine(e.Message);
+                }
+            }
+        }
         public void ChangeSetting(ICommunicationSetting setting)
         {
             throw new NotImplementedException();

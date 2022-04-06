@@ -7,7 +7,7 @@ namespace Communications
 {
     public class SerialComminucation : ICommunication
     {
-        private readonly SerialDevice _port;
+        //private readonly SerialDevice _port;
 
         //delegate void MessageReceivedHandler(object sender, string message);
         //event MessageReceivedHandler MessageReceived;

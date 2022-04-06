@@ -57,7 +57,7 @@ namespace Communications.DeviceCommand
                 _com.Write(_commandCode);
                 Task.Delay(10).Wait();
 
-                if (stopwatch.Elapsed.TotalMilliseconds > 3000)
+                if (stopwatch.Elapsed.TotalMilliseconds > 1000)
                     break;
             }
             ExecuteFinished = true;
