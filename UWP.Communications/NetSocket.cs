@@ -45,12 +45,12 @@ namespace Communications
             {
                 try
                 {
-                    string msg = Read();
+                    string msg = await Read();
                     if (msg != null)
                     {
                         MessageReceived?.Invoke(this, msg);
                     }
-                    await Task.Delay(1);
+                    //await Task.Delay(1);
                 }
                 catch (Exception e)
                 {
@@ -85,17 +85,18 @@ namespace Communications
             return IsConnected;
         }
 
-        public string Read()
+        public async Task<string> Read()
         {
             StringBuilder strBuilder;
             string tr = "";
+            Connect();
             try
             {
                 strBuilder = new StringBuilder();
 
                 reader.InputStreamOptions = InputStreamOptions.Partial;
 
-                var stringHeader = reader.LoadAsync(255);
+                var stringHeader = await reader.LoadAsync(255);
                 //tr = reader.ReadString(1);
                 while (reader.UnconsumedBufferLength > 0)
                 {

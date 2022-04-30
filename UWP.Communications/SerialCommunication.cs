@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Threading.Tasks;
 using Windows.Devices.SerialCommunication;
 
 
@@ -44,17 +45,17 @@ namespace Communications
         //    MessageReceived?.Invoke(this, msg);
         //}
 
-        private void backWork()
+        private async void backWork()
         {
             while (true)
             {
-                string msg = Read();
+                string msg = await Read();
                 MessageReceived?.Invoke(this, msg);
             }
         }
         //public bool IsConnected => _port.IsOpen;
 
-        public Action<object, string> MessageReceived { get; set;}
+        public Action<object, string> MessageReceived { get; set; }
 
         public bool IsConnected => throw new NotImplementedException();
 
@@ -77,8 +78,9 @@ namespace Communications
             }
         }
 
-        public string Read()
+        public async Task<string> Read()
         {
+            string res = "";
             //if (_port.IsOpen == false)
             //{
             //    if (!Connect())
@@ -98,10 +100,10 @@ namespace Communications
             }
             finally
             {
-
+                await Task.Delay(1);
             }
 
-            return "";
+            return res;
         }
 
         public void Write(string data)
