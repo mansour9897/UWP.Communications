@@ -27,7 +27,9 @@ namespace Communications.DeviceCommand
             {
                 ExecuteConfirmed = true;
 
-                string val = message.Split('\t')[1];
+                string val = "";
+                if (message.Contains("\t"))
+                    val = message.Split('\t')[1];
                 CommandConfirmed?.Invoke(ConfirmationCode, val);
             }
         }
@@ -55,7 +57,7 @@ namespace Communications.DeviceCommand
             while (!ExecuteConfirmed)
             {
                 _com.Write(_commandCode);
-                Task.Delay(10).Wait();
+                Task.Delay(1).Wait();
 
                 if (stopwatch.Elapsed.TotalMilliseconds > 1000)
                     break;

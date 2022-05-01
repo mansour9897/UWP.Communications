@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 
 namespace Communications
 {
@@ -10,7 +11,7 @@ namespace Communications
 
         bool Connect();
         void Write(string data);
-        string Read();
+        Task<string> Read();
 
         void ChangeSetting(ICommunicationSetting setting);
 
